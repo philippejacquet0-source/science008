@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {fetchAnalysisRange} from '../dist/api.mjs';
+const args={ids:['BSS1'],params:['1340'],start:'2024-01-01',end:'2024-01-02'};
+const raw={bss_id:'BSS1',code_param:1340,resultat:7,code_remarque_analyse:1,date_debut_prelevement:'2024-01-01T00:00:00Z',code_qualification:'1'};
+const response=data=>({ok:true,json:async()=>data});
+test('HTTP 206 est une réponse partielle valide et toutes les pages sont chargées',async()=>{let calls=0;const rows=await fetchAnalysisRange({...args,fetcher:async()=>{calls++;return response(calls===1?{count:2,data:[raw],next:'next'}:{count:2,data:[{...raw,resultat:8}],next:null});}});assert.equal(calls,2);assert.equal(rows.length,2);assert.equal(rows[0].code_station,'BSS1');});
+test('Un total supérieur à 20 000 est découpé en périodes',async()=>{const calls=[];const rows=await fetchAnalysisRange({...args,fetcher:async url=>{const q=new URL(url).searchParams;calls.push(q);return response(q.get('date_debut_prelevement')!==q.get('date_fin_prelevement')?{count:25000,data:[],next:'next'}:{count:1,data:[{...raw,date_debut_prelevement:q.get('date_debut_prelevement')+'T00:00:00Z'}],next:null});}});assert.equal(calls.length,3);assert.equal(rows.length,2);});
+test('Une réponse incomplète déclenche une erreur, sans troncature silencieuse',async()=>{await assert.rejects(fetchAnalysisRange({...args,fetcher:async()=>response({count:2,data:[raw],next:null})}),/incomplète/);});
+test('Débordement journalier irréductible signalé',async()=>{await assert.rejects(fetchAnalysisRange({...args,end:args.start,fetcher:async()=>response({count:25000,data:[],next:'next'})}),/Trop de résultats/);});
