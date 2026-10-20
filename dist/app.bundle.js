@@ -8,12 +8,14 @@ const PARAMETERS=[
  {code:'1301',label:'Température',group:'Usuels',description:'La température de l’eau au moment du prélèvement.'},
  {code:'1335',label:'Ammonium',group:'Usuels',description:'Une forme d’azote dont la présence dépend aussi des conditions chimiques naturelles de la nappe.'},
  {code:'1295',label:'Turbidité',group:'Usuels',description:'Turbidité par néphélométrie à la formazine : une mesure optique du trouble de l’eau. Les unités NFU et NTU restent distinctes.'},
+ {code:'6498',label:'Turbidité visuelle',group:'Usuels',kind:'qualitative',description:'Appréciation visuelle (code Sandre 6498) : nulle, faible, moyenne ou forte. Ces catégories ne sont pas des mesures en NFU ou NTU.'},
  {code:'1841',label:'Carbone organique total (COT)',short:'Carbone organique total',group:'Usuels',description:'Carbone organique mesuré sur l’eau brute (fraction 23). Les mesures sur eau filtrée, correspondant au carbone organique dissous, ne sont pas retenues pour ce paramètre.'},
  {code:'1337',label:'Chlorures',group:'Minéralisation',description:'Des ions dissous qui participent à la minéralisation de l’eau.'},
  {code:'1338',label:'Sulfates',group:'Minéralisation',description:'Des ions dissous liés à la géologie et aux apports dans la nappe.'},
  {code:'1374',label:'Calcium',group:'Minéralisation',description:'Un élément dissous qui contribue à la dureté de l’eau.'},
  {code:'1372',label:'Magnésium',group:'Minéralisation',description:'Un élément dissous qui contribue à la dureté de l’eau.'},
  {code:'1375',label:'Sodium',group:'Minéralisation',description:'Un élément dissous utile pour décrire la composition minérale de l’eau.'},
+ {code:'1367',label:'Potassium',group:'Minéralisation',description:'Potassium dissous ; la mesure déclarée et son unité sont conservées.'},
  {code:'1345',label:'Dureté totale (TH)',short:'Dureté totale',group:'Minéralisation',description:'La dureté totale, ou titre hydrotimétrique, décrit la teneur en calcium et magnésium. La mesure déclarée est conservée dans son unité d’origine.'},
  {code:'1347',label:'Titre alcalimétrique complet (TAC)',short:'Alcalinité (TAC)',group:'Minéralisation',description:'Le TAC décrit l’alcalinité liée aux hydroxydes, carbonates et bicarbonates. La mesure déclarée est conservée dans son unité d’origine.'},
  {code:'1393',label:'Fer',group:'Métaux',description:'Un élément dont la présence peut être naturelle, selon la roche et les conditions d’oxydoréduction.'},
@@ -25,9 +27,10 @@ const PARAMETERS=[
  {code:'1108',label:'Atrazine déséthyl',group:'Pesticides',description:'Un produit de dégradation de l’atrazine.'},
  {code:'1506',label:'Glyphosate',group:'Pesticides',description:'Un herbicide ; sa disponibilité dépend du programme de suivi.'},
  {code:'1907',label:'AMPA',group:'Pesticides',description:'Un produit de dégradation de certains composés phosphonatés, dont le glyphosate.'},
- {code:'1221',label:'Métolachlore total',group:'Pesticides',description:'Un herbicide recherché dans certains programmes de suivi.'}
+ {code:'1221',label:'Métolachlore total',group:'Pesticides',description:'Un herbicide recherché dans certains programmes de suivi.'},
+ {code:'6276',label:'Somme des pesticides totaux',group:'Pesticides',description:'Somme déclarée par le producteur des données ; elle n’est pas recalculée à partir des substances affichées.'}
 ];
-const PRESETS={essentials:['1340','1302','1303','1301','1393','1394','1345','1347','1295','1841'],minerals:['1337','1338','1374','1372','1375'],metals:['1393','1394','1369','1386','1382'],pesticides:['1107','1108','1506','1907','1221'],all:PARAMETERS.map(p=>p.code)};
+const PRESETS={essentials:['1340','1302','1303','1301','1393','1394','1841','1345','1347','6498','1295'],minerals:['1337','1338','1374','1372','1375','1367'],metals:['1393','1394','1369','1386','1382'],pesticides:['1107','1108','1506','1907','1221'],all:PARAMETERS.map(p=>p.code)};
 function acceptsAnalysis(row){return String(row.code_parametre??row.code_param)!=='1841'||String(row.code_fraction)==='23';}
 const COLORS=['#c8754d','#238c99','#8773ac','#438e67','#a98d35','#a36087','#537fc2','#707c43','#ab503e','#345987','#786055','#398674'];
 const normalize=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[’']/g,' ');
@@ -51,15 +54,16 @@ function matchesStation(s,{query='',basin='',territory='',nature='Forage',entity
  const haystack=s._search??=searchText(s);return words.every(word=>haystack.includes(word));
 }
 function normalizeAnalysis(row){return {...row,code_station:row.bss_id,code_parametre:String(row.code_param),date_prelevement:row.date_debut_prelevement,code_remarque:String(row.code_remarque_analyse),mnemo_remarque:row.nom_remarque_analyse,libelle_fraction:row.nom_fraction,resultat:typeof row.resultat==='number'&&Number.isFinite(row.resultat)?row.resultat:null};}
-function quantified(row){return String(row.code_remarque)==='1'&&Number.isFinite(row.resultat);}
+function qualitativeLabel(row){if(String(row.code_parametre??row.code_param)!=='6498')return null;return ({1:'Nulle',2:'Faible',3:'Moyenne',4:'Forte'})[row.resultat]??'Catégorie non renseignée';}
+function quantified(row){return qualitativeLabel(row)===null&&String(row.code_remarque)==='1'&&Number.isFinite(row.resultat);}
 function thresholdKind(row){
- if(quantified(row))return null;
+ if(qualitativeLabel(row)!==null||quantified(row))return null;
  const label=normalize(row.mnemo_remarque);
  if(label.includes('inferieur')||/^\s*</.test(label)||['2','5'].includes(String(row.code_remarque)))return 'below';
  if(label.includes('superieur')||/^\s*>/.test(label)||String(row.code_remarque)==='4')return 'above';
  return 'unknown';
 }
-function resultLabel(row){if(!Number.isFinite(row.resultat))return 'Non renseigné';const type=thresholdKind(row);return (type==='below'?'< ':type==='above'?'> ':type==='unknown'?'Indication : ':'')+numberLabel(row.resultat);}
+function resultLabel(row){const category=qualitativeLabel(row);if(category!==null)return category;if(!Number.isFinite(row.resultat))return 'Non renseigné';const type=thresholdKind(row);return (type==='below'?'< ':type==='above'?'> ':type==='unknown'?'Indication : ':'')+numberLabel(row.resultat);}
 function analysisKey(r){return JSON.stringify([r.code_station,r.code_parametre,r.date_prelevement,r.code_fraction,r.code_unite,r.resultat,r.code_remarque,r.code_methode,r.code_lieu_analyse,r.code_producteur]);}
 function deduplicate(rows){const seen=new Set();return rows.filter(r=>{const key=analysisKey(r);if(seen.has(key))return false;seen.add(key);return true;});}
 function groupAnalyses(rows){const groups=new Map();for(const row of rows){if(String(row.code_qualification)!=='1')continue;const key=JSON.stringify([row.code_parametre,String(row.code_unite??''),row.symbole_unite??'',String(row.code_fraction??'')]);if(!groups.has(key))groups.set(key,{key,code:row.code_parametre,unit:row.symbole_unite||'Unité non précisée',unitCode:String(row.code_unite??''),fraction:row.libelle_fraction||'Fraction non précisée',fractionCode:String(row.code_fraction??''),rows:[]});groups.get(key).rows.push(row);}return [...groups.values()].map(g=>({...g,rows:g.rows.sort((a,b)=>a.date_prelevement.localeCompare(b.date_prelevement))}));}
@@ -73,7 +77,7 @@ function summarize(rows){const unique=deduplicate(rows),numbers=unique.filter(qu
 function csvCell(value,text=false){let s=String(value??'');if(text&&/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';}
 function concentrationColor(value,min,max){const t=max===min?.5:Math.max(0,Math.min(1,(value-min)/(max-min)));return `hsl(${215-t*30} ${45+t*20}% ${88-t*58}%)`;}
 
-return {PARAMETERS,PRESETS,acceptsAnalysis,COLORS,normalize,numberLabel,stationName,validDate,validDateRange,approximatePosition,searchText,matchesStation,normalizeAnalysis,quantified,thresholdKind,resultLabel,analysisKey,deduplicate,groupAnalyses,splitDateRange,pickSnapshot,summarize,csvCell,concentrationColor};
+return {PARAMETERS,PRESETS,acceptsAnalysis,COLORS,normalize,numberLabel,stationName,validDate,validDateRange,approximatePosition,searchText,matchesStation,normalizeAnalysis,qualitativeLabel,quantified,thresholdKind,resultLabel,analysisKey,deduplicate,groupAnalyses,splitDateRange,pickSnapshot,summarize,csvCell,concentrationColor};
 })();
 modules["catalogue.mjs"]=(()=>{
 const columns=['code_station','libelle_station','longitude','latitude','code_commune','libelle_commune','code_departement','libelle_departement','nom_cours_eau','nom_bassin','type_entite_hydro','date_arret','code_cours_eau'];
@@ -404,6 +408,10 @@ function renderCharts(rows){
  destroyCharts();const groups=groupAnalyses(rows);$('chart-reading').hidden=!rows.length;
  if(!groups.length){const div=document.createElement('div');div.className='empty-state';div.innerHTML='<h3>Aucune mesure disponible</h3><p>Essayez une période plus large, un autre paramètre ou un autre point d’eau.</p>';$('charts').append(div);return;}
  for(const group of groups){const p=PARAMETERS.find(p=>p.code===group.code);const card=document.createElement('article');card.className='chart-card';card.innerHTML=`<div class="chart-card-head"><h3>${escape(p?.label||group.rows[0].nom_param||group.code)}</h3><span class="unit-badge">${escape(group.unit)}</span></div><p class="chart-description">${escape(p?.description||'')} · ${escape(group.fraction)}</p><div class="chart-canvas"><canvas role="img" aria-label="${escape(p?.label||group.code)} : évolution des résultats par point"></canvas></div><div class="chart-meta"><span>${numberLabel(group.rows.length)} analyses · ${group.rows.filter(quantified).length} quantifiées</span><span>Fraction : ${escape(group.fractionCode||'inconnue')}</span></div>`;
+  if(p?.kind==='qualitative'){
+   card.querySelector('.unit-badge').textContent='Appréciation visuelle';card.querySelector('.chart-canvas').remove();card.querySelector('.chart-meta').firstElementChild.textContent=numberLabel(group.rows.length)+' observations qualitatives';
+   const wrap=document.createElement('div');wrap.className='table-wrap';wrap.innerHTML='<table><thead><tr><th>Prélèvement</th><th>Point</th><th>Turbidité visuelle</th></tr></thead><tbody>'+group.rows.map(r=>`<tr><td>${escape(dateLabel(r.date_prelevement))}</td><td>${escape(stationName(byId.get(r.code_station)||{}))} · ${escape(r.code_station)}</td><td>${escape(resultLabel(r))}</td></tr>`).join('')+'</tbody></table>';card.append(wrap);$('charts').append(card);continue;
+  }
   $('charts').append(card);const datasets=[];
   for(const id of pageIds()){const pointRows=group.rows.filter(r=>r.code_station===id),s=byId.get(id);if(!pointRows.length)continue;const color=COLORS[selectedIds().indexOf(id)%COLORS.length],name=stationName(s)+' · '+id;
    datasets.push({label:name,data:pointRows.filter(quantified).map(r=>({x:Date.parse(r.date_prelevement),y:r.resultat,row:r})),borderColor:color,backgroundColor:color,pointRadius:3,pointHoverRadius:5,borderWidth:1.6,tension:0,spanGaps:false,showLine:true});
@@ -423,7 +431,7 @@ function renderData(rows){
  $('data-table').innerHTML=display.map(r=>`<tr><td>${escape(dateLabel(r.date_prelevement))}</td><td>${escape(stationName(byId.get(r.code_station)||{}))}<br>${escape(r.code_station)}</td><td>${escape(r.nom_param||PARAMETERS.find(p=>p.code===r.code_parametre)?.label||r.code_parametre)}</td><td>${escape(resultLabel(r))} ${escape(r.symbole_unite)}</td><td>${escape(r.libelle_fraction)}</td><td>${escape(r.nom_qualification||'Correcte')} · ${escape(r.mnemo_remarque)}</td></tr>`).join('');$('table-note').textContent=rows.length>2000?`Les 2 000 premières lignes sont affichées ; l’export CSV conserve les ${numberLabel(rows.length)} analyses chargées.`:'L’export CSV conserve toutes les analyses chargées et leur date complète de prélèvement.';
 }
 function renderComparison(rows){
- const groups=groupAnalyses(rows);$('comparison-section').hidden=selected.size<2||!groups.length;$('comparison-content').replaceChildren();if(selected.size<2)return;
+ const groups=groupAnalyses(rows).filter(g=>PARAMETERS.find(p=>p.code===g.code)?.kind!=='qualitative');$('comparison-section').hidden=selected.size<2||!groups.length;$('comparison-content').replaceChildren();if(selected.size<2)return;
  for(const group of groups){const title=document.createElement('h3');title.textContent=(PARAMETERS.find(p=>p.code===group.code)?.label||group.code)+' · '+group.unit+' · '+group.fraction;const wrap=document.createElement('div');wrap.className='table-wrap';wrap.innerHTML='<table><thead><tr><th>Point</th><th>Profondeur déclarée</th><th>Moyenne</th><th>Minimum–maximum</th><th>Quantifiées / exclues</th><th>Période réelle</th></tr></thead><tbody></tbody></table>';
   for(const id of pageIds()){const own=group.rows.filter(r=>r.code_station===id);if(!own.length)continue;const s=byId.get(id),stats=summarize(own),tr=document.createElement('tr');tr.innerHTML=`<td>${escape(stationName(s))}<br>${escape(id)}</td><td>${s.profondeur_investigation!=null?numberLabel(s.profondeur_investigation)+' m':'Non renseignée'}</td><td>${stats.mean==null?'Aucune valeur quantifiée':numberLabel(stats.mean)}</td><td>${stats.min==null?'—':numberLabel(stats.min)+'–'+numberLabel(stats.max)}</td><td>${stats.count} / ${stats.excluded}</td><td>${dateLabel(own[0].date_prelevement)}–${dateLabel(own.at(-1).date_prelevement)}</td>`;wrap.querySelector('tbody').append(tr);}
   $('comparison-content').append(title,wrap);
@@ -448,10 +456,10 @@ async function loadSnapshot(){
 }
 function renderSnapshot(index){
  snapshotGroup=snapshotGroups[index];if(!snapshotGroup)return;snapshotChosen=pickSnapshot(snapshotGroup.rows,snapshotDate,snapshotTolerance);const values=[...snapshotChosen.values()].filter(quantified).map(r=>r.resultat);snapshotScale=values.length?[Math.min(...values),Math.max(...values)]:null;layer.draw();
- const p=PARAMETERS.find(p=>p.code===snapshotParam);$('snapshot-status').textContent=`${p?.label||snapshotParam} · cible : ${dateLabel(snapshotDate)} ± ${snapshotTolerance} jours · ${snapshotChosen.size}/${numberLabel(selected.size)} points avec résultat, dont ${values.length} quantifiés. Unité : ${snapshotGroup.unit} · ${snapshotGroup.fraction}.`;
+ const p=PARAMETERS.find(p=>p.code===snapshotParam),qualitative=p?.kind==='qualitative',unit=qualitative?'':snapshotGroup.unit;$('snapshot-status').textContent=`${p?.label||snapshotParam} · cible : ${dateLabel(snapshotDate)} ± ${snapshotTolerance} jours · ${snapshotChosen.size}/${numberLabel(selected.size)} points avec résultat${qualitative?', observations qualitatives':', dont '+values.length+' quantifiés. Unité : '+unit} · ${snapshotGroup.fraction}.`;
  $('snapshot-table-wrap').hidden=false;$('snapshot-table-summary').textContent=`${snapshotChosen.size} résultats · dates réellement mesurées`;
- $('snapshot-table').innerHTML=selectedIds().slice(0,2000).map(id=>{const r=snapshotChosen.get(id);return `<tr><td>${escape(stationName(byId.get(id)))} · ${escape(id)}</td><td>${r?dateLabel(r.date_prelevement):'Aucun prélèvement dans l’écart accepté'}</td><td>${r?escape(resultLabel(r))+' '+escape(snapshotGroup.unit):'—'}</td></tr>`;}).join('');
- $('map-legend').innerHTML=values.length?`<span>${escape(p?.label)} · ${escape(snapshotGroup.unit)}</span><span class="concentration-scale"></span><span>${numberLabel(Math.min(...values))} → ${numberLabel(Math.max(...values))}</span><span>Gris : absent / non quantifié</span>`:'Gris : aucune valeur quantifiée pour ce groupe';
+ $('snapshot-table').innerHTML=selectedIds().slice(0,2000).map(id=>{const r=snapshotChosen.get(id);return `<tr><td>${escape(stationName(byId.get(id)))} · ${escape(id)}</td><td>${r?dateLabel(r.date_prelevement):'Aucun prélèvement dans l’écart accepté'}</td><td>${r?escape(resultLabel(r))+' '+escape(unit):'—'}</td></tr>`;}).join('');
+ $('map-legend').innerHTML=qualitative?'Turbidité visuelle : catégories consultables dans le tableau':values.length?`<span>${escape(p?.label)} · ${escape(snapshotGroup.unit)}</span><span class="concentration-scale"></span><span>${numberLabel(Math.min(...values))} → ${numberLabel(Math.max(...values))}</span><span>Gris : absent / non quantifié</span>`:'Gris : aucune valeur quantifiée pour ce groupe';
 }
 function showExample(){
  const id=boot.examples.ids[0];$('nature').value='Forage';$('search').value='';$('basin').value='';$('territory').value='';$('depth-min').value='';$('depth-max').value='';entity='';$('aquifer-search').value='';$('recent').checked=false;$('date-start').value=boot.examples.start;$('date-end').value=boot.examples.end;params=new Set(PRESETS.essentials);renderParameters();selected=new Set([id]);focusId=id;historyPage=0;applyFilters();selectionChanged();fitPoints([byId.get(id)]);$('analysis').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});

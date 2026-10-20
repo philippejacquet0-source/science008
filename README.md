@@ -26,9 +26,11 @@ La collecte départementale évite la limite de profondeur de pagination de l’
 
 **Localisation des captages d’eau potable :** le code de précision Sandre **18** correspond à une position publique au chef-lieu de la commune. Ces symboles ne représentent pas l’emplacement réel de l’ouvrage. Les coordonnées publiées sont conservées ; aucune position confidentielle n’est recherchée ou reconstituée. Le code 0 correspond à une précision non renseignée. Des captages peuvent se superposer et restent accessibles dans la liste.
 
-24 paramètres : nitrates, pH, conductivité à 25 °C, température, ammonium, turbidité, carbone organique total (COT), chlorures, sulfates, calcium, magnésium, sodium, dureté totale (TH), titre alcalimétrique complet (TAC), fer, manganèse, arsenic, nickel, plomb, atrazine, atrazine déséthyl, glyphosate, AMPA et métolachlore total. Les codes et libellés ont été vérifiés contre l’API. La disponibilité dépend des programmes de suivi ; aucune couverture uniforme n’est présumée.
+27 paramètres : nitrates, pH, conductivité à 25 °C, température, ammonium, turbidité néphélométrique, turbidité visuelle, carbone organique total (COT), chlorures, sulfates, calcium, magnésium, sodium, potassium, dureté totale (TH), titre alcalimétrique complet (TAC), fer, manganèse, arsenic, nickel, plomb, atrazine, atrazine déséthyl, glyphosate, AMPA, métolachlore total et somme des pesticides totaux. Les codes et libellés ont été vérifiés contre l’API. La disponibilité dépend des programmes de suivi ; aucune couverture uniforme n’est présumée.
 
-La présélection **Usuels** propose 10 paramètres : nitrates, pH, conductivité, température, fer, manganèse, dureté, TAC, turbidité et COT. Les liens contenant une sélection explicite de paramètres la conservent ; cliquer sur Usuels applique cette nouvelle sélection.
+Les présélections suivent les croix du classeur révisé fourni le 20/10/2026 : **Usuels (11)**, **Minéraux (6)**, **Métaux (5)**, **Pesticides (5)** et **Tout (27)**. Usuels ajoute la turbidité visuelle aux dix paramètres précédents. Minéraux ajoute le potassium. La somme des pesticides totaux appartient uniquement à Tout, conformément au fichier. Les liens contenant une sélection explicite de paramètres la conservent ; cliquer sur la présélection applique la nouvelle sélection.
+
+La **turbidité visuelle (6498)** est qualitative : Nulle (1), Faible (2), Moyenne (3), Forte (4), selon le [référentiel Sandre](https://mdm.sandre.eaufrance.fr/id/parametre/6498/html). Elle est présentée sous forme d’observations, sans courbe numérique ni moyenne, et ne colore pas la carte selon une concentration. La turbidité néphélométrique (1295) reste une mesure distincte. La somme des pesticides (6276) conserve le résultat déclaré par la source, sans calcul à partir des substances choisies.
 
 Le **COT (1841)** est limité aux analyses de la fraction **Eau brute (23)**. Les mesures sur eau filtrée, correspondant au carbone organique dissous, sont exclues de ce paramètre. Sa requête est séparée de celles des autres paramètres afin de conserver les différentes fractions de ces derniers. La dureté et le TAC sont les résultats déclarés dans ADES, sans calcul à partir du calcium ou du magnésium.
 
@@ -36,7 +38,7 @@ Les analyses retenues portent la qualification source **Correcte (1)**. Le statu
 
 Les données décrivent l’eau prélevée aux points de suivi. Le site ne calcule pas de note sanitaire et ne délivre aucune attestation de potabilité. Les rattachements BDLISA ne démontrent pas une connexion hydraulique entre points.
 
-Un exemple local comprend **1 089 analyses réelles** depuis 2021 sur trois forages de Meurthe-et-Moselle : **Jaulny (BSS000MCQE), Colombey-les-Belles (BSS000UPPG) et Villers-la-Montagne (BSS000HPVL)**. Le bouton de découverte sélectionne Jaulny ; ajouter les autres par recherche pour comparer. Les résultats locaux sont explicitement étiquetés. Le bouton de chargement permet de demander la version actuelle à Hub’Eau.
+Un exemple local comprend **1 145 analyses réelles** depuis 2021 sur trois forages de Meurthe-et-Moselle : **Jaulny (BSS000MCQE), Colombey-les-Belles (BSS000UPPG) et Villers-la-Montagne (BSS000HPVL)**. Le bouton de découverte sélectionne Jaulny ; ajouter les autres par recherche pour comparer. Les résultats locaux sont explicitement étiquetés. Le bouton de chargement permet de demander la version actuelle à Hub’Eau.
 
 ## Ouvrir et reconstruire
 
@@ -69,7 +71,7 @@ Les analyses sont paginées, puis découpées par période au-delà de 20 000 r�
 
 Le workflow GitHub Actions prépare le bundle, exécute les tests, vérifie les ressources puis publie `dist/` sur GitHub Pages à chaque push sur `main`. Le catalogue est un instantané versionné.
 
-Les 17 tests couvrent la conservation du catalogue, les filtres, les dates réelles, la précision communale, les seuils, la séparation des unités/fractions, la déduplication, les moyennes, la vue par date, la pagination et les débordements. Le COT sur eau brute est vérifié sans exclure les autres fractions des autres paramètres. Dans le navigateur, les appels ADES réels, la comparaison de deux forages et la vue par date ont été vérifiés. L’affichage mobile à 390 px ne présente pas de débordement horizontal et replie les filtres. Le déclenchement de l’export a été observé sans erreur JavaScript ; la réception du fichier par le navigateur intégré reste à confirmer.
+Les 18 tests couvrent la conservation du catalogue, les filtres, les dates réelles, la précision communale, les seuils, la séparation des unités/fractions, la déduplication, les moyennes, la vue par date, la pagination et les débordements. Le COT sur eau brute est vérifié sans exclure les autres fractions des autres paramètres. La turbidité visuelle est vérifiée comme une catégorie exclue des moyennes. Dans le navigateur, les appels ADES réels, la comparaison de deux forages et la vue par date ont été vérifiés. L’affichage mobile à 390 px ne présente pas de débordement horizontal et replie les filtres. Le déclenchement de l’export a été observé sans erreur JavaScript ; la réception du fichier par le navigateur intégré reste à confirmer.
 
 ## Sources
 
