@@ -7,11 +7,15 @@ const PARAMETERS=[
  {code:'1303',label:'Conductivité à 25 °C',short:'Conductivité',group:'Usuels',description:'Un indicateur de la quantité d’ions dissous, à une température de référence de 25 °C.'},
  {code:'1301',label:'Température',group:'Usuels',description:'La température de l’eau au moment du prélèvement.'},
  {code:'1335',label:'Ammonium',group:'Usuels',description:'Une forme d’azote dont la présence dépend aussi des conditions chimiques naturelles de la nappe.'},
+ {code:'1295',label:'Turbidité',group:'Usuels',description:'Turbidité par néphélométrie à la formazine : une mesure optique du trouble de l’eau. Les unités NFU et NTU restent distinctes.'},
+ {code:'1841',label:'Carbone organique total (COT)',short:'Carbone organique total',group:'Usuels',description:'Carbone organique mesuré sur l’eau brute (fraction 23). Les mesures sur eau filtrée, correspondant au carbone organique dissous, ne sont pas retenues pour ce paramètre.'},
  {code:'1337',label:'Chlorures',group:'Minéralisation',description:'Des ions dissous qui participent à la minéralisation de l’eau.'},
  {code:'1338',label:'Sulfates',group:'Minéralisation',description:'Des ions dissous liés à la géologie et aux apports dans la nappe.'},
  {code:'1374',label:'Calcium',group:'Minéralisation',description:'Un élément dissous qui contribue à la dureté de l’eau.'},
  {code:'1372',label:'Magnésium',group:'Minéralisation',description:'Un élément dissous qui contribue à la dureté de l’eau.'},
  {code:'1375',label:'Sodium',group:'Minéralisation',description:'Un élément dissous utile pour décrire la composition minérale de l’eau.'},
+ {code:'1345',label:'Dureté totale (TH)',short:'Dureté totale',group:'Minéralisation',description:'La dureté totale, ou titre hydrotimétrique, décrit la teneur en calcium et magnésium. La mesure déclarée est conservée dans son unité d’origine.'},
+ {code:'1347',label:'Titre alcalimétrique complet (TAC)',short:'Alcalinité (TAC)',group:'Minéralisation',description:'Le TAC décrit l’alcalinité liée aux hydroxydes, carbonates et bicarbonates. La mesure déclarée est conservée dans son unité d’origine.'},
  {code:'1393',label:'Fer',group:'Métaux',description:'Un élément dont la présence peut être naturelle, selon la roche et les conditions d’oxydoréduction.'},
  {code:'1394',label:'Manganèse',group:'Métaux',description:'Un élément sensible aux conditions d’oxydoréduction dans la nappe.'},
  {code:'1369',label:'Arsenic',group:'Métaux',description:'Un élément pouvant provenir des formations géologiques ou d’apports extérieurs.'},
@@ -23,7 +27,8 @@ const PARAMETERS=[
  {code:'1907',label:'AMPA',group:'Pesticides',description:'Un produit de dégradation de certains composés phosphonatés, dont le glyphosate.'},
  {code:'1221',label:'Métolachlore total',group:'Pesticides',description:'Un herbicide recherché dans certains programmes de suivi.'}
 ];
-const PRESETS={essentials:['1340','1302','1303','1301'],minerals:['1337','1338','1374','1372','1375'],metals:['1393','1394','1369','1386','1382'],pesticides:['1107','1108','1506','1907','1221'],all:PARAMETERS.map(p=>p.code)};
+const PRESETS={essentials:['1340','1302','1303','1301','1393','1394','1345','1347','1295','1841'],minerals:['1337','1338','1374','1372','1375'],metals:['1393','1394','1369','1386','1382'],pesticides:['1107','1108','1506','1907','1221'],all:PARAMETERS.map(p=>p.code)};
+function acceptsAnalysis(row){return String(row.code_parametre??row.code_param)!=='1841'||String(row.code_fraction)==='23';}
 const COLORS=['#c8754d','#238c99','#8773ac','#438e67','#a98d35','#a36087','#537fc2','#707c43','#ab503e','#345987','#786055','#398674'];
 const normalize=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[’']/g,' ');
 const numberLabel=v=>new Intl.NumberFormat('fr-FR',{maximumSignificantDigits:6}).format(v);
@@ -68,7 +73,7 @@ function summarize(rows){const unique=deduplicate(rows),numbers=unique.filter(qu
 function csvCell(value,text=false){let s=String(value??'');if(text&&/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';}
 function concentrationColor(value,min,max){const t=max===min?.5:Math.max(0,Math.min(1,(value-min)/(max-min)));return `hsl(${215-t*30} ${45+t*20}% ${88-t*58}%)`;}
 
-return {PARAMETERS,PRESETS,COLORS,normalize,numberLabel,stationName,validDate,validDateRange,approximatePosition,searchText,matchesStation,normalizeAnalysis,quantified,thresholdKind,resultLabel,analysisKey,deduplicate,groupAnalyses,splitDateRange,pickSnapshot,summarize,csvCell,concentrationColor};
+return {PARAMETERS,PRESETS,acceptsAnalysis,COLORS,normalize,numberLabel,stationName,validDate,validDateRange,approximatePosition,searchText,matchesStation,normalizeAnalysis,quantified,thresholdKind,resultLabel,analysisKey,deduplicate,groupAnalyses,splitDateRange,pickSnapshot,summarize,csvCell,concentrationColor};
 })();
 modules["catalogue.mjs"]=(()=>{
 const columns=['code_station','libelle_station','longitude','latitude','code_commune','libelle_commune','code_departement','libelle_departement','nom_cours_eau','nom_bassin','type_entite_hydro','date_arret','code_cours_eau'];
@@ -262,7 +267,7 @@ function installMapBackground(map,{select,status,protocol}){
 return {BACKGROUNDS,usableBackground,installMapBackground};
 })();
 modules["api.mjs"]=(()=>{
-const {splitDateRange,deduplicate,normalizeAnalysis}=modules["core.mjs"];
+const {splitDateRange,deduplicate,normalizeAnalysis,acceptsAnalysis}=modules["core.mjs"];
 const API_BASE='https://hubeau.eaufrance.fr/api/v1/qualite_nappes/';
 const FIELDS=['bss_id','code_bss','date_debut_prelevement','code_param','nom_param','code_fraction','nom_fraction','resultat','code_remarque_analyse','nom_remarque_analyse','code_unite','symbole_unite','code_qualification','nom_qualification','code_statut_analyse','nom_statut_analyse','code_methode','code_lieu_analyse','code_producteur','nom_producteur','limite_quantification','limite_detection','seuil_saturation'];
 async function fetchJSON(url,{signal,fetcher=fetch}={}){
@@ -273,7 +278,12 @@ async function fetchJSON(url,{signal,fetcher=fetch}={}){
 }
 async function fetchAnalysisRange({ids,params,start,end,signal,onProgress=()=>{},fetcher=fetch}){
  if(!ids.length||!params.length)return [];
- const base=API_BASE+'analyses?'+new URLSearchParams({bss_id:ids.join(','),code_param:params.join(','),date_debut_prelevement:start,date_fin_prelevement:end,code_qualification:'1',fields:FIELDS.join(','),format:'json',size:'2000'});
+ if(params.length>1&&params.map(String).includes('1841')){
+  const others=await fetchAnalysisRange({ids,params:params.filter(code=>String(code)!=='1841'),start,end,signal,onProgress,fetcher});
+  const cot=await fetchAnalysisRange({ids,params:['1841'],start,end,signal,onProgress,fetcher});
+  return deduplicate([...others,...cot]);
+ }
+ const base=API_BASE+'analyses?'+new URLSearchParams({bss_id:ids.join(','),code_param:params.join(','),date_debut_prelevement:start,date_fin_prelevement:end,code_qualification:'1',fields:FIELDS.join(','),format:'json',size:'2000',...(params.length===1&&String(params[0])==='1841'?{code_fraction:'23'}:{})});
  const options={signal,fetcher};const first=await fetchJSON(base+'&page=1',options);
  if(first.count>20000){
   const range=splitDateRange(start,end);
@@ -286,13 +296,13 @@ async function fetchAnalysisRange({ids,params,start,end,signal,onProgress=()=>{}
  let next=first.next;
  while(next){page++;const data=await fetchJSON(base+'&page='+page,options);rows.push(...data.data);next=data.next;onProgress(rows.length,first.count);if(page>10)throw Error('Pagination inattendue ; chargement interrompu.');}
  if(rows.length!==first.count)throw Error(`Réponse incomplète (${rows.length}/${first.count}). Réessayez le chargement.`);
- return deduplicate(rows.map(normalizeAnalysis));
+ return deduplicate(rows.map(normalizeAnalysis).filter(acceptsAnalysis));
 }
 
 return {API_BASE,fetchJSON,fetchAnalysisRange};
 })();
 modules["app.js"]=(()=>{
-const {PARAMETERS,PRESETS,COLORS,normalize,numberLabel,stationName,validDate,validDateRange,approximatePosition,matchesStation,normalizeAnalysis,quantified,thresholdKind,resultLabel,groupAnalyses,pickSnapshot,summarize,csvCell,concentrationColor}=modules["core.mjs"];
+const {PARAMETERS,PRESETS,COLORS,normalize,numberLabel,stationName,validDate,validDateRange,approximatePosition,matchesStation,normalizeAnalysis,acceptsAnalysis,quantified,thresholdKind,resultLabel,groupAnalyses,pickSnapshot,summarize,csvCell,concentrationColor}=modules["core.mjs"];
 const {unpackCatalogue,mercatorPoint}=modules["catalogue.mjs"];
 const {createStationLayer,installRectangleSelection}=modules["station-layer.mjs"];
 const {installMapBackground}=modules["map-background.mjs"];
@@ -384,7 +394,7 @@ async function loadHistory(force=false){
   let rows,source='Hub’Eau · ADES';
   const example=boot.examples;
   if(!force&&cache.has(key)){rows=cache.get(key);source='Hub’Eau · données déjà chargées';}
-  else if(!force&&ids.every(id=>example.ids.includes(id))&&codes.every(code=>example.parameters.includes(code))&&range.start>=example.start&&range.end<=example.end){rows=example.rows.map(normalizeAnalysis).filter(r=>ids.includes(r.code_station)&&params.has(r.code_parametre)&&r.date_prelevement.slice(0,10)>=range.start&&r.date_prelevement.slice(0,10)<=range.end);source='Exemple local ADES · extrait le '+dateLabel(example.retrievedAt);}
+  else if(!force&&ids.every(id=>example.ids.includes(id))&&codes.every(code=>example.parameters.includes(code))&&range.start>=example.start&&range.end<=example.end){rows=example.rows.map(normalizeAnalysis).filter(r=>acceptsAnalysis(r)&&ids.includes(r.code_station)&&params.has(r.code_parametre)&&r.date_prelevement.slice(0,10)>=range.start&&r.date_prelevement.slice(0,10)<=range.end);source='Exemple local ADES · extrait le '+dateLabel(example.retrievedAt);}
   else{setStatus('Chargement des analyses ADES…');rows=await fetchAnalysisRange({ids,params:codes,...range,signal,onProgress:(loaded,total)=>{if(generation===historyGeneration)setStatus(`${numberLabel(loaded)} / ${numberLabel(total)} analyses reçues…`);}});cache.set(key,rows);if(cache.size>30)cache.delete(cache.keys().next().value);}
   if(generation!==historyGeneration||signal.aborted)return;
   historyRows=rows;historySource=source;setStatus(rows.length?`${numberLabel(rows.length)} analyses · ${dateLabel(range.start)} au ${dateLabel(range.end)} · ${source}`:`Aucune analyse déclarée « Correcte » pour ces points, ces paramètres et cette période. ${source}`);renderCharts(rows);renderData(rows);renderComparison(rows);$('export-csv').disabled=!rows.length;

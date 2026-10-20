@@ -1,4 +1,4 @@
-import {PARAMETERS,PRESETS,COLORS,normalize,numberLabel,stationName,validDate,validDateRange,approximatePosition,matchesStation,normalizeAnalysis,quantified,thresholdKind,resultLabel,groupAnalyses,pickSnapshot,summarize,csvCell,concentrationColor} from './core.mjs';
+import {PARAMETERS,PRESETS,COLORS,normalize,numberLabel,stationName,validDate,validDateRange,approximatePosition,matchesStation,normalizeAnalysis,acceptsAnalysis,quantified,thresholdKind,resultLabel,groupAnalyses,pickSnapshot,summarize,csvCell,concentrationColor} from './core.mjs';
 import {unpackCatalogue,mercatorPoint} from './catalogue.mjs';
 import {createStationLayer,installRectangleSelection} from './station-layer.mjs';
 import {installMapBackground} from './map-background.mjs';
@@ -90,7 +90,7 @@ async function loadHistory(force=false){
   let rows,source='Hub’Eau · ADES';
   const example=boot.examples;
   if(!force&&cache.has(key)){rows=cache.get(key);source='Hub’Eau · données déjà chargées';}
-  else if(!force&&ids.every(id=>example.ids.includes(id))&&codes.every(code=>example.parameters.includes(code))&&range.start>=example.start&&range.end<=example.end){rows=example.rows.map(normalizeAnalysis).filter(r=>ids.includes(r.code_station)&&params.has(r.code_parametre)&&r.date_prelevement.slice(0,10)>=range.start&&r.date_prelevement.slice(0,10)<=range.end);source='Exemple local ADES · extrait le '+dateLabel(example.retrievedAt);}
+  else if(!force&&ids.every(id=>example.ids.includes(id))&&codes.every(code=>example.parameters.includes(code))&&range.start>=example.start&&range.end<=example.end){rows=example.rows.map(normalizeAnalysis).filter(r=>acceptsAnalysis(r)&&ids.includes(r.code_station)&&params.has(r.code_parametre)&&r.date_prelevement.slice(0,10)>=range.start&&r.date_prelevement.slice(0,10)<=range.end);source='Exemple local ADES · extrait le '+dateLabel(example.retrievedAt);}
   else{setStatus('Chargement des analyses ADES…');rows=await fetchAnalysisRange({ids,params:codes,...range,signal,onProgress:(loaded,total)=>{if(generation===historyGeneration)setStatus(`${numberLabel(loaded)} / ${numberLabel(total)} analyses reçues…`);}});cache.set(key,rows);if(cache.size>30)cache.delete(cache.keys().next().value);}
   if(generation!==historyGeneration||signal.aborted)return;
   historyRows=rows;historySource=source;setStatus(rows.length?`${numberLabel(rows.length)} analyses · ${dateLabel(range.start)} au ${dateLabel(range.end)} · ${source}`:`Aucune analyse déclarée « Correcte » pour ces points, ces paramètres et cette période. ${source}`);renderCharts(rows);renderData(rows);renderComparison(rows);$('export-csv').disabled=!rows.length;

@@ -4,11 +4,15 @@ export const PARAMETERS=[
  {code:'1303',label:'Conductivité à 25 °C',short:'Conductivité',group:'Usuels',description:'Un indicateur de la quantité d’ions dissous, à une température de référence de 25 °C.'},
  {code:'1301',label:'Température',group:'Usuels',description:'La température de l’eau au moment du prélèvement.'},
  {code:'1335',label:'Ammonium',group:'Usuels',description:'Une forme d’azote dont la présence dépend aussi des conditions chimiques naturelles de la nappe.'},
+ {code:'1295',label:'Turbidité',group:'Usuels',description:'Turbidité par néphélométrie à la formazine : une mesure optique du trouble de l’eau. Les unités NFU et NTU restent distinctes.'},
+ {code:'1841',label:'Carbone organique total (COT)',short:'Carbone organique total',group:'Usuels',description:'Carbone organique mesuré sur l’eau brute (fraction 23). Les mesures sur eau filtrée, correspondant au carbone organique dissous, ne sont pas retenues pour ce paramètre.'},
  {code:'1337',label:'Chlorures',group:'Minéralisation',description:'Des ions dissous qui participent à la minéralisation de l’eau.'},
  {code:'1338',label:'Sulfates',group:'Minéralisation',description:'Des ions dissous liés à la géologie et aux apports dans la nappe.'},
  {code:'1374',label:'Calcium',group:'Minéralisation',description:'Un élément dissous qui contribue à la dureté de l’eau.'},
  {code:'1372',label:'Magnésium',group:'Minéralisation',description:'Un élément dissous qui contribue à la dureté de l’eau.'},
  {code:'1375',label:'Sodium',group:'Minéralisation',description:'Un élément dissous utile pour décrire la composition minérale de l’eau.'},
+ {code:'1345',label:'Dureté totale (TH)',short:'Dureté totale',group:'Minéralisation',description:'La dureté totale, ou titre hydrotimétrique, décrit la teneur en calcium et magnésium. La mesure déclarée est conservée dans son unité d’origine.'},
+ {code:'1347',label:'Titre alcalimétrique complet (TAC)',short:'Alcalinité (TAC)',group:'Minéralisation',description:'Le TAC décrit l’alcalinité liée aux hydroxydes, carbonates et bicarbonates. La mesure déclarée est conservée dans son unité d’origine.'},
  {code:'1393',label:'Fer',group:'Métaux',description:'Un élément dont la présence peut être naturelle, selon la roche et les conditions d’oxydoréduction.'},
  {code:'1394',label:'Manganèse',group:'Métaux',description:'Un élément sensible aux conditions d’oxydoréduction dans la nappe.'},
  {code:'1369',label:'Arsenic',group:'Métaux',description:'Un élément pouvant provenir des formations géologiques ou d’apports extérieurs.'},
@@ -20,7 +24,8 @@ export const PARAMETERS=[
  {code:'1907',label:'AMPA',group:'Pesticides',description:'Un produit de dégradation de certains composés phosphonatés, dont le glyphosate.'},
  {code:'1221',label:'Métolachlore total',group:'Pesticides',description:'Un herbicide recherché dans certains programmes de suivi.'}
 ];
-export const PRESETS={essentials:['1340','1302','1303','1301'],minerals:['1337','1338','1374','1372','1375'],metals:['1393','1394','1369','1386','1382'],pesticides:['1107','1108','1506','1907','1221'],all:PARAMETERS.map(p=>p.code)};
+export const PRESETS={essentials:['1340','1302','1303','1301','1393','1394','1345','1347','1295','1841'],minerals:['1337','1338','1374','1372','1375'],metals:['1393','1394','1369','1386','1382'],pesticides:['1107','1108','1506','1907','1221'],all:PARAMETERS.map(p=>p.code)};
+export function acceptsAnalysis(row){return String(row.code_parametre??row.code_param)!=='1841'||String(row.code_fraction)==='23';}
 export const COLORS=['#c8754d','#238c99','#8773ac','#438e67','#a98d35','#a36087','#537fc2','#707c43','#ab503e','#345987','#786055','#398674'];
 export const normalize=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[’']/g,' ');
 export const numberLabel=v=>new Intl.NumberFormat('fr-FR',{maximumSignificantDigits:6}).format(v);

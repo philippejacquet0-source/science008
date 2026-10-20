@@ -1,4 +1,4 @@
-import {splitDateRange,deduplicate,normalizeAnalysis} from './core.mjs';
+import {splitDateRange,deduplicate,normalizeAnalysis,acceptsAnalysis} from './core.mjs';
 export const API_BASE='https://hubeau.eaufrance.fr/api/v1/qualite_nappes/';
 const FIELDS=['bss_id','code_bss','date_debut_prelevement','code_param','nom_param','code_fraction','nom_fraction','resultat','code_remarque_analyse','nom_remarque_analyse','code_unite','symbole_unite','code_qualification','nom_qualification','code_statut_analyse','nom_statut_analyse','code_methode','code_lieu_analyse','code_producteur','nom_producteur','limite_quantification','limite_detection','seuil_saturation'];
 export async function fetchJSON(url,{signal,fetcher=fetch}={}){
@@ -9,7 +9,12 @@ export async function fetchJSON(url,{signal,fetcher=fetch}={}){
 }
 export async function fetchAnalysisRange({ids,params,start,end,signal,onProgress=()=>{},fetcher=fetch}){
  if(!ids.length||!params.length)return [];
- const base=API_BASE+'analyses?'+new URLSearchParams({bss_id:ids.join(','),code_param:params.join(','),date_debut_prelevement:start,date_fin_prelevement:end,code_qualification:'1',fields:FIELDS.join(','),format:'json',size:'2000'});
+ if(params.length>1&&params.map(String).includes('1841')){
+  const others=await fetchAnalysisRange({ids,params:params.filter(code=>String(code)!=='1841'),start,end,signal,onProgress,fetcher});
+  const cot=await fetchAnalysisRange({ids,params:['1841'],start,end,signal,onProgress,fetcher});
+  return deduplicate([...others,...cot]);
+ }
+ const base=API_BASE+'analyses?'+new URLSearchParams({bss_id:ids.join(','),code_param:params.join(','),date_debut_prelevement:start,date_fin_prelevement:end,code_qualification:'1',fields:FIELDS.join(','),format:'json',size:'2000',...(params.length===1&&String(params[0])==='1841'?{code_fraction:'23'}:{})});
  const options={signal,fetcher};const first=await fetchJSON(base+'&page=1',options);
  if(first.count>20000){
   const range=splitDateRange(start,end);
@@ -22,5 +27,5 @@ export async function fetchAnalysisRange({ids,params,start,end,signal,onProgress
  let next=first.next;
  while(next){page++;const data=await fetchJSON(base+'&page='+page,options);rows.push(...data.data);next=data.next;onProgress(rows.length,first.count);if(page>10)throw Error('Pagination inattendue ; chargement interrompu.');}
  if(rows.length!==first.count)throw Error(`Réponse incomplète (${rows.length}/${first.count}). Réessayez le chargement.`);
- return deduplicate(rows.map(normalizeAnalysis));
+ return deduplicate(rows.map(normalizeAnalysis).filter(acceptsAnalysis));
 }
